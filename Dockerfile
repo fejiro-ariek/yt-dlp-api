@@ -4,9 +4,6 @@ RUN apt-get update && \
     apt-get install -y ffmpeg curl nodejs npm && \
     rm -rf /var/lib/apt/lists/*
 
-# Install yt-dlp's JS dependency for PO token generation
-RUN npm install -g @yt-dlp/yt-dlp-js-runtime
-
 WORKDIR /app
 
 COPY requirements.txt .
