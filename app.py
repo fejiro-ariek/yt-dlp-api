@@ -27,11 +27,12 @@ def get_info():
 
     try:
         result = subprocess.run(
-            ["yt-dlp", "--dump-json", "--no-playlist", url],
+            ["yt-dlp", "--cookies", "/app/cookies.txt", "--dump-json", "--no-playlist", url],
             capture_output=True,
             text=True,
             timeout=60,
         )
+        
         if result.returncode != 0:
             return jsonify({"error": result.stderr.strip()}), 500
 
@@ -83,7 +84,7 @@ def get_download_url():
 
     try:
         result = subprocess.run(
-            ["yt-dlp", "-f", fmt, "--get-url", url],
+            ["yt-dlp", "--cookies", "/app/cookies.txt", "-f", fmt, "--get-url", url],
             capture_output=True,
             text=True,
             timeout=60,
@@ -116,7 +117,7 @@ def get_audio_url():
 
     try:
         result = subprocess.run(
-            ["yt-dlp", "-f", "bestaudio", "--get-url", url],
+            ["yt-dlp", "--cookies", "/app/cookies.txt", "-f", "bestaudio", "--get-url", url],
             capture_output=True,
             text=True,
             timeout=60,
@@ -143,7 +144,7 @@ def get_subtitles():
 
     try:
         result = subprocess.run(
-            ["yt-dlp", "--list-subs", "--skip-download", url],
+            ["yt-dlp", "--cookies", "/app/cookies.txt", "--list-subs", "--skip-download", url],
             capture_output=True,
             text=True,
             timeout=60,
