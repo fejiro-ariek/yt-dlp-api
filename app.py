@@ -6,6 +6,12 @@ import json
 app = Flask(__name__)
 API_KEY = os.environ.get("API_KEY", "changeme")
 
+YTDLP_BASE = [
+    "yt-dlp",
+    "--cookies", "/app/cookies.txt",
+    "--extractor-args", "youtube:player_client=web,default",
+    "--add-header", "X-Youtube-Identity-Token:",
+]
 
 def auth(req):
     return req.headers.get("X-API-Key") == API_KEY
@@ -27,42 +33,39 @@ def get_info():
 
     try:
         result = subprocess.run(
-            ["yt-dlp", "--cookies", "/app/cookies.txt", "--dump-json", "--no-playlist", url],
+            YTDLP_BASE + ["--dump-json", "--no-playlist", url],
             capture_output=True,
             text=True,
             timeout=60,
         )
-        
         if result.returncode != 0:
             return jsonify({"error": result.stderr.strip()}), 500
 
         data = json.loads(result.stdout)
-        return jsonify(
-            {
-                "title": data.get("title"),
-                "duration": data.get("duration"),
-                "duration_string": data.get("duration_string"),
-                "thumbnail": data.get("thumbnail"),
-                "uploader": data.get("uploader"),
-                "uploader_url": data.get("uploader_url"),
-                "view_count": data.get("view_count"),
-                "like_count": data.get("like_count"),
-                "description": data.get("description"),
-                "upload_date": data.get("upload_date"),
-                "webpage_url": data.get("webpage_url"),
-                "extractor": data.get("extractor"),
-                "formats": [
-                    {
-                        "format_id": f.get("format_id"),
-                        "format_note": f.get("format_note"),
-                        "ext": f.get("ext"),
-                        "resolution": f.get("resolution"),
-                        "filesize": f.get("filesize"),
-                    }
-                    for f in data.get("formats", [])
-                ],
-            }
-        )
+        return jsonify({
+            "title": data.get("title"),
+            "duration": data.get("duration"),
+            "duration_string": data.get("duration_string"),
+            "thumbnail": data.get("thumbnail"),
+            "uploader": data.get("uploader"),
+            "uploader_url": data.get("uploader_url"),
+            "view_count": data.get("view_count"),
+            "like_count": data.get("like_count"),
+            "description": data.get("description"),
+            "upload_date": data.get("upload_date"),
+            "webpage_url": data.get("webpage_url"),
+            "extractor": data.get("extractor"),
+            "formats": [
+                {
+                    "format_id": f.get("format_id"),
+                    "format_note": f.get("format_note"),
+                    "ext": f.get("ext"),
+                    "resolution": f.get("resolution"),
+                    "filesize": f.get("filesize"),
+                }
+                for f in data.get("formats", [])
+            ],
+        })
     except subprocess.TimeoutExpired:
         return jsonify({"error": "Request timed out"}), 504
     except json.JSONDecodeError:
@@ -73,7 +76,6 @@ def get_info():
 
 @app.route("/download-url", methods=["GET"])
 def get_download_url():
-    """Returns the direct CDN/download URL without downloading the file."""
     if not auth(request):
         return jsonify({"error": "Unauthorized"}), 401
 
@@ -84,7 +86,7 @@ def get_download_url():
 
     try:
         result = subprocess.run(
-            ["yt-dlp", "--cookies", "/app/cookies.txt", "-f", fmt, "--get-url", url],
+            YTDLP_BASE + ["-f", fmt, "--get-url", url],
             capture_output=True,
             text=True,
             timeout=60,
@@ -93,12 +95,10 @@ def get_download_url():
             return jsonify({"error": result.stderr.strip()}), 500
 
         urls = result.stdout.strip().split("\n")
-        return jsonify(
-            {
-                "download_url": urls[0] if len(urls) == 1 else urls,
-                "format": fmt,
-            }
-        )
+        return jsonify({
+            "download_url": urls[0] if len(urls) == 1 else urls,
+            "format": fmt,
+        })
     except subprocess.TimeoutExpired:
         return jsonify({"error": "Request timed out"}), 504
     except Exception as e:
@@ -107,7 +107,6 @@ def get_download_url():
 
 @app.route("/audio-url", methods=["GET"])
 def get_audio_url():
-    """Shortcut to get best audio-only direct URL."""
     if not auth(request):
         return jsonify({"error": "Unauthorized"}), 401
 
@@ -117,7 +116,7 @@ def get_audio_url():
 
     try:
         result = subprocess.run(
-            ["yt-dlp", "--cookies", "/app/cookies.txt", "-f", "bestaudio", "--get-url", url],
+            YTDLP_BASE + ["-f", "bestaudio", "--get-url", url],
             capture_output=True,
             text=True,
             timeout=60,
@@ -134,7 +133,6 @@ def get_audio_url():
 
 @app.route("/subtitles", methods=["GET"])
 def get_subtitles():
-    """Returns available subtitle/caption languages for a video."""
     if not auth(request):
         return jsonify({"error": "Unauthorized"}), 401
 
@@ -144,7 +142,7 @@ def get_subtitles():
 
     try:
         result = subprocess.run(
-            ["yt-dlp", "--cookies", "/app/cookies.txt", "--list-subs", "--skip-download", url],
+            YTDLP_BASE + ["--list-subs", "--skip-download", url],
             capture_output=True,
             text=True,
             timeout=60,
